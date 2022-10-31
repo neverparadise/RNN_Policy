@@ -30,6 +30,8 @@ class RolloutBufferSamples(NamedTuple):
     log_probs: th.Tensor
     advantages: th.Tensor
     
+    
+    
 @dataclass
 class RecurrentRolloutBufferSamples:
     observations: th.Tensor
@@ -146,7 +148,7 @@ class RolloutBuffer:
                 # hidden_shape = (num_rnn_layers, batch_size, hidden_size)
                 # we need to squeeze batch dim
                 if self.is_shared_network:
-                    self.hiddens[self.pt] = hidden.squeeze(1)
+                    self.hiddens[self.pt] = actor_hx.squeeze(1)
                 else:
                     self.actor_hxs[self.pt] = actor_hx.squeeze(1)
                     self.critic_hxs[self.pt] = critic_hx.squeeze(1)
@@ -179,7 +181,6 @@ class RolloutBuffer:
             delta = self.rewards[step] + self.gamma * next_value * next_non_terminal - self.values[step]
             last_advantage = delta + self.gamma * self.gae_lambda * next_non_terminal * last_advantage
             self.advantages[step] = last_advantage
-        self.advantages[traj_range] = (self.advantages[traj_range] - self.advantages[traj_range].mean()) / self.advantages[traj_range].std()
         # https://github.com/DLR-RM/stable-baselines3/blob/6f822b9ed7d6e8f57e5a58059923a5b24e8db283/stable_baselines3/common/buffers.py#L347-L348
         self.returns[traj_range] = self.advantages[traj_range] + self.values[traj_range]
     
@@ -227,65 +228,11 @@ class RolloutBuffer:
         indices = np.random.choice(self.pt, batch_size, replace=False)
         return self.get_samples_recurrent(indices)
     
-    def sample_transitions_no_rnn(self, batch_size):
-        indices = np.random.permutation(self.buffer_size)
-        start_idx = 0
-        while start_idx < self.buffer_size:
-            yield self._get_samples(indices[start_idx:start_idx + batch_size])
-            start_idx += batch_size
-    
-    def sample_episodes(self, batch_size):
-         # truncated_batch는 무슨 의미일까?
-        # buffer_size가 128이고 배치 사이즈가 3이라고 하자
-        # trajectory_index = [0, 32, 64, 96, 128]
-        # 현재 trajectory는 4개가 있다. 
-        # len(self.trajectory_index) = buffer에 들어있는 trajectory의 개수
-        truncated_batch = len(self.trajectory_index) % batch_size
-        # Need to always keep a multiple of batch size + 1 trajectories
-        # so that we can index the last trajectory's final timestep
-        # If num episodes % batch_size == 0 then remove batch_size - 1 trajectories
-        if truncated_batch == 0:
-            self.trajectory_index = self.trajectory_index[:-(batch_size - 1)]
-        # If num episodes % batch_size == 1 then its fine nothing needs to be changed
-        # If num episodes % batch_size > 1 then remove truncated_batch 
-        
-        # traj_index = np.array([0, 32, 64, 96, 128])
-        # traj_idx = traj_index[:-(2 - (2-1))] = array([ 0, 32, 64, 96])
-        # 버퍼에 전체 에피소드가 들어있기 때문에 마지막 traj index를 날린다 
-        if truncated_batch > 1:
-            self.trajectory_index = self.trajectory_index[:-(truncated_batch - (truncated_batch - 1))]
-
-        traj_indices = np.random.permutation(len(self.trajectory_index) - 1)
-        start_idx = 0
-        while start_idx < len(traj_indices):
-            batch_idx = traj_indices[start_idx:start_idx+batch_size]
-            observations = [to_tensor(self.observations[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            actions = [to_tensor(self.actions[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            old_values = [to_tensor(self.values[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            returns = [to_tensor(self.returns[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            old_log_probs = [to_tensor(self.log_probs[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            advantages = [to_tensor(self.advantages[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            actor_hxs = [to_tensor(self.actor_hxs[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            critic_hxs = [to_tensor(self.critic_hxs[self.trajectory_index[idx]:self.trajectory_index[idx + 1]], device=self.device) for idx in batch_idx]
-            masks = [torch.ones_like(r) for r in returns]
-
-            observations = pad_sequence(observations, batch_first=False)
-            actions = pad_sequence(actions, batch_first=False).view(-1, *self.action_dim)
-            old_values = pad_sequence(old_values, batch_first=False).view(-1)
-            returns = pad_sequence(returns, batch_first=False).view(-1)
-            old_log_probs = pad_sequence(old_log_probs, batch_first=False).view(-1)
-            advantages = pad_sequence(advantages, batch_first=False).view(-1)
-            masks = pad_sequence(masks, batch_first=False).view(-1)
-            actor_hxs = pad_sequence(actor_hxs, batch_first=False)
-            critic_hxs = pad_sequence(critic_hxs, batch_first=False)
-            yield RecurrentRolloutBufferSamples(*tuple([observations, actions, old_values, returns, old_log_probs, advantages, masks, actor_hxs, actor_cxs, critic_hxs, critic_cxs]))
-            start_idx += batch_size
-        pass
-    
     def sample_sequences(self, ):
         pass
 
-
+    def sample_episodes(self, ):
+        pass
         
     def sample_batch(self, recurrent_seq_len: int,  whole_episodes: bool = False, batch_size: Optional[int] = 256) -> Generator[RolloutBufferSamples, None, None]:
         """

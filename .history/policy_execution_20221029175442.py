@@ -124,7 +124,6 @@ if __name__ == "__main__":
     rollout_buffer = RolloutBuffer(buffer_size=args.rollout_steps,
                                 state_dim=env.observation_space.shape,
                                 action_dim=args.action_dim,
-                                is_continuous=args.is_continuous,
                                 gamma=args.gamma,
                                 gae_lambda=args.gae_lambda,
                                 device=args.device,

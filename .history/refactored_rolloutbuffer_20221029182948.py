@@ -179,7 +179,8 @@ class RolloutBuffer:
             delta = self.rewards[step] + self.gamma * next_value * next_non_terminal - self.values[step]
             last_advantage = delta + self.gamma * self.gae_lambda * next_non_terminal * last_advantage
             self.advantages[step] = last_advantage
-        self.advantages[traj_range] = (self.advantages[traj_range] - self.advantages[traj_range].mean()) / self.advantages[traj_range].std()
+        self.advantages = (self.advantages - self.advantages.mean()) / self.advantages.std()
+        
         # https://github.com/DLR-RM/stable-baselines3/blob/6f822b9ed7d6e8f57e5a58059923a5b24e8db283/stable_baselines3/common/buffers.py#L347-L348
         self.returns[traj_range] = self.advantages[traj_range] + self.values[traj_range]
     

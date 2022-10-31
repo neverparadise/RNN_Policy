@@ -123,8 +123,7 @@ if __name__ == "__main__":
     rnn_critic = RNNCritic(args).to(device)
     rollout_buffer = RolloutBuffer(buffer_size=args.rollout_steps,
                                 state_dim=env.observation_space.shape,
-                                action_dim=args.action_dim,
-                                is_continuous=args.is_continuous,
+                                action_space=args.action_dim,
                                 gamma=args.gamma,
                                 gae_lambda=args.gae_lambda,
                                 device=args.device,

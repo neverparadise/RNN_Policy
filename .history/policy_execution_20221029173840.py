@@ -38,8 +38,6 @@ if isinstance(env.action_space, Box):
 elif isinstance(env.action_space, Discrete):
     action_dim = env.action_space.n
     is_continuous = False
-    
-actoin_dim = (env.action_space.n,) if isinstance(env.action_space, gym.spaces.Discrete) else env.action_space.shape[0]
 
 print(state_dim)
 print(action_dim)
@@ -66,7 +64,7 @@ def parse_args():
             help="the number of parallel game environments")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
             help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument('--device', default='cpu')
+    parser.add_argument('--device', default='cuda')
 
 
     # ? 3. Networks, Activation, Hyperparameters
@@ -123,11 +121,10 @@ if __name__ == "__main__":
     rnn_critic = RNNCritic(args).to(device)
     rollout_buffer = RolloutBuffer(buffer_size=args.rollout_steps,
                                 state_dim=env.observation_space.shape,
-                                action_dim=args.action_dim,
-                                is_continuous=args.is_continuous,
+                                action_space=env.action_space,
                                 gamma=args.gamma,
                                 gae_lambda=args.gae_lambda,
-                                device=args.device,
+                                device="cuda",
                                 is_recurrent=True,
                                 recurrent_size=args.hidden_dim,
                                 num_rnn_layers=args.num_rnn_layers,
@@ -170,8 +167,8 @@ if __name__ == "__main__":
                 
                 if done or step == 500:
                     break
-            if rollout_buffer.size > args.batch_size:
-                samples = rollout_buffer.sample_transtions(args.batch_size)
+            
+            samples = rollout_buffer.sample
             #train_ppo(args, rnn_policy, rnn_critic, rollout_buffer, policy_optimizer, critic_optimizer, writer, global_step)
             
             if done or step == 500:

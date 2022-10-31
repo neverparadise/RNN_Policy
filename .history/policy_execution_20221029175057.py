@@ -38,8 +38,6 @@ if isinstance(env.action_space, Box):
 elif isinstance(env.action_space, Discrete):
     action_dim = env.action_space.n
     is_continuous = False
-    
-actoin_dim = (env.action_space.n,) if isinstance(env.action_space, gym.spaces.Discrete) else env.action_space.shape[0]
 
 print(state_dim)
 print(action_dim)
@@ -123,8 +121,7 @@ if __name__ == "__main__":
     rnn_critic = RNNCritic(args).to(device)
     rollout_buffer = RolloutBuffer(buffer_size=args.rollout_steps,
                                 state_dim=env.observation_space.shape,
-                                action_dim=args.action_dim,
-                                is_continuous=args.is_continuous,
+                                action_space=args.action_dim,
                                 gamma=args.gamma,
                                 gae_lambda=args.gae_lambda,
                                 device=args.device,
